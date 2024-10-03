@@ -1,0 +1,60 @@
+int periodo = 500;
+int msj = 0;
+String inString;
+
+#if CONFIG_FREERTOS_UNICORE
+  static const BaseType_t app_cpu = 0;
+#else
+  static const BaseType_t app_cpu = 1;
+#endif
+
+  //Gestion de tareas
+  static TaskHandle_t tarea_1 = NULL;
+  static TaskHandle_t tarea_2 = NULL;
+
+  /*--------------Tareas-------------*/
+  //Tarea 01 : Parpadea led con frecuencia constante
+  void tarea01(void *parameter){
+    while(1){
+      digitalWrite(13,HIGH);
+      vTaskDelay(500/portTICK_PERIOD_MS);
+      digitalWrite(13,LOW);
+      vTaskDelay(500/portTICK_PERIOD_MS);
+    }
+  }
+
+  //Tarea 02 : Parpadea el led con frecuencia variable
+  void tarea02(void *parameter){
+    while(1){
+      digitalWrite(12,HIGH);
+      vTaskDelay(500/portTICK_PERIOD_MS);
+      digitalWrite(12,LOW);
+      vTaskDelay(500/portTICK_PERIOD_MS);
+    }    
+  }
+  
+void setup() {
+  Serial.begin(115200);
+  Serial.println("Comunicación serial iniciada");
+  pinMode(13,OUTPUT);
+  pinMode(12,OUTPUT);
+
+  xTaskCreatePinnedToCore(tarea01,
+                          "Tarea 1",
+                          1024,
+                          NULL,
+                          1,
+                          &tarea_1,
+                          app_cpu);
+
+  xTaskCreatePinnedToCore(tarea02,
+                          "Tarea 2",
+                          1024,
+                          NULL,
+                          2,
+                          &tarea_2,
+                          app_cpu);
+}
+
+void loop() {
+}
