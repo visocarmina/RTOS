@@ -1,0 +1,85 @@
+#if CONFIG_FREERTOS_UNICORE
+  static const BaseType_t app_cpu = 0;
+#else
+  static const BaseType_t app_cpu = 1;
+#endif
+
+const char msj1[] = "Carmina Viso";
+const char msj2[] = "Noel Rodriguez";
+const char msj3[] = "Raymundo Reducindo";
+
+int flag = 0; 
+
+  //Gestion de tareas
+  static TaskHandle_t tarea_1 = NULL;
+  static TaskHandle_t tarea_2 = NULL;
+  static TaskHandle_t tarea_3 = NULL;
+
+  /*--------------Tareas-------------*/
+  //Tarea 01 : Se ejecuta una vez
+  void tarea01(void *parameter){
+    int g = 0;
+    while(1){
+      g++;
+      if(g>1){
+        vTaskDelete(tarea_1);
+      }
+      else{
+      vTaskDelay(1000/portTICK_PERIOD_MS);
+      Serial.println("Carmina Viso");
+      }
+    }
+  }
+
+  //Tarea 02 : Se suspende 2 seg y después se habilita nuevamente 
+  void tarea02(void *parameter){
+    int g=1;
+    while(1){
+      g++;
+      vTaskDelay(1000/portTICK_PERIOD_MS);
+      if(g>2){
+      Serial.println("Noel Rodriguez");
+      }
+    }    
+  }
+
+  //Tarea 03 : Se ejecuta indefinidamente
+  void tarea03(void *parameter){
+    while(1){
+      vTaskDelay(1000/portTICK_PERIOD_MS);
+      Serial.println("Raymundo Reducindo");
+      
+    }    
+  }
+  
+void setup() {
+  Serial.begin(115200);
+
+  xTaskCreatePinnedToCore(tarea01,
+                          "Tarea 1",
+                          1024,
+                          NULL,
+                          1,
+                          &tarea_1,
+                          app_cpu);
+
+  xTaskCreatePinnedToCore(tarea02,
+                          "Tarea 2",
+                          1024,
+                          NULL,
+                          1,
+                          &tarea_2,
+                          app_cpu);
+  vTaskSuspend(tarea_2);
+
+  xTaskCreatePinnedToCore(tarea03,
+                          "Tarea 3",
+                          1024,
+                          NULL,
+                          2,
+                          &tarea_3,
+                          app_cpu);
+}
+
+void loop() {
+}
