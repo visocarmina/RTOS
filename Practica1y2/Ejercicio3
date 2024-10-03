@@ -1,0 +1,76 @@
+#if CONFIG_FREERTOS_UNICORE
+  static const BaseType_t app_cpu = 0;
+#else
+  static const BaseType_t app_cpu = 1;
+#endif
+
+#define led1 13
+#define led2 12
+#define pb 15
+
+  //Gestion de tareas
+  static TaskHandle_t tarea_1 = NULL;
+  static TaskHandle_t tarea_2 = NULL;
+
+  /*--------------Tareas-------------*/
+  //Tarea 01 : Parpadea led con frecuencia constante
+  void tarea01(void *parameter){
+    while(1){
+      if(digitalRead(pb)==1){
+        digitalWrite(led1,HIGH);
+        vTaskDelay(250/portTICK_PERIOD_MS);
+        digitalWrite(led1,LOW);
+        vTaskDelay(250/portTICK_PERIOD_MS);
+      }
+      else{
+        digitalWrite(led1,HIGH);
+        vTaskDelay(500/portTICK_PERIOD_MS);
+        digitalWrite(led1,LOW);
+        vTaskDelay(500/portTICK_PERIOD_MS);
+      }
+
+    }
+  }
+
+  //Tarea 02 : Parpadea el led con frecuencia variable
+  void tarea02(void *parameter){
+    while(1){
+      if(digitalRead(pb)==1){
+        digitalWrite(led2,HIGH);
+        vTaskDelay(250/portTICK_PERIOD_MS);
+        digitalWrite(led2,LOW);
+        vTaskDelay(250/portTICK_PERIOD_MS);
+      }
+      else{
+        digitalWrite(led2,HIGH);
+        vTaskDelay(1000/portTICK_PERIOD_MS);
+        digitalWrite(led2,LOW);
+        vTaskDelay(1000/portTICK_PERIOD_MS);
+      }
+    }    
+  }
+  
+void setup() {
+  pinMode(led1,OUTPUT);
+  pinMode(led2,OUTPUT);
+  pinMode(pb,INPUT);
+
+  xTaskCreatePinnedToCore(tarea01,
+                          "Tarea 1",
+                          1024,
+                          NULL,
+                          1,
+                          &tarea_1,
+                          app_cpu);
+
+  xTaskCreatePinnedToCore(tarea02,
+                          "Tarea 2",
+                          1024,
+                          NULL,
+                          1,
+                          &tarea_2,
+                          app_cpu);
+}
+
+void loop() {
+}
