@@ -1,0 +1,165 @@
+const char msj[] = "Unidad Profesional Interdisciplinaria de Ingeniería Campus Zacatecas IPN"; 
+#if CONFIG_FREERTOS_UNICORE
+  static const BaseType_t app_cpu = 0;
+#else
+  static const BaseType_t app_cpu = 1;
+#endif
+
+  //Gestion de tareas
+  //static TaskHandle_t tarea_1 = NULL;
+  static TaskHandle_t tarea_2 = NULL;
+  static TaskHandle_t tarea_3 = NULL;
+  static TaskHandle_t tarea_4 = NULL;
+  static TaskHandle_t tarea_5 = NULL;
+  static TaskHandle_t tarea_6 = NULL;
+  static TaskHandle_t tarea_7 = NULL;
+  static TaskHandle_t tarea_8 = NULL;
+
+  /*--------------Tareas-------------*/
+  //Tarea 01 : Enciende un led mientras se envía el mensaje
+  /*void tarea01(void *parameter){
+    while(1){
+      if(Serial.availableForWrite() > 0){
+        digitalWrite(12,HIGH);
+      }
+      else{
+        digitalWrite(12,LOW);
+      }
+    }
+  }*/
+
+  //Tarea 02 : Envía el mensaje
+  void tarea02(void *parameter){
+    int msj_len = strlen(msj);
+    while(1){
+      for(int i = 0; i < msj_len; i++){
+        Serial.print(msj[i]);
+      }
+      Serial.println();
+      vTaskDelay(1000/portTICK_PERIOD_MS);
+    }    
+  }
+
+  //Tarea 03 : Envía el mensaje
+  void tarea03(void *parameter){
+    while(1){
+      digitalWrite(12,HIGH);
+      Serial.println("1");
+      digitalWrite(12,LOW);
+      vTaskDelay(1000/portTICK_PERIOD_MS);
+    }  
+  }
+
+  //Tarea 04 : Envía el mensaje
+  void tarea04(void *parameter){
+    while(1){
+      Serial.println("2");
+      vTaskDelay(1000/portTICK_PERIOD_MS);
+    }  
+  }
+
+  //Tarea 05 : Envía el mensaje
+  void tarea05(void *parameter){
+    while(1){
+      Serial.println("3");
+      vTaskDelay(1000/portTICK_PERIOD_MS);
+    }   
+  }
+
+  //Tarea 06 : Envía el mensaje
+  void tarea06(void *parameter){
+    while(1){
+      digitalWrite(13,HIGH);
+      Serial.println("4");
+      digitalWrite(13,LOW);
+      vTaskDelay(1000/portTICK_PERIOD_MS);
+    }  
+  }
+
+  //Tarea 07 : Envía el mensaje
+  void tarea07(void *parameter){
+    while(1){
+      Serial.println("5");
+      vTaskDelay(1000/portTICK_PERIOD_MS);
+    }    
+  }
+
+  //Tarea 08 : Envía el mensaje
+  void tarea08(void *parameter){
+    while(1){
+      Serial.println("6");
+      vTaskDelay(1000/portTICK_PERIOD_MS);
+    }    
+  }
+void setup() {
+  Serial.begin(300);
+  pinMode(12,OUTPUT);
+  pinMode(13,OUTPUT);
+
+  /*xTaskCreatePinnedToCore(tarea01,
+                          "Tarea 1",
+                          1024,
+                          NULL,
+                          1,
+                          &tarea_1,
+                          app_cpu);
+*/
+  xTaskCreatePinnedToCore(tarea02,
+                          "Tarea 2",
+                          1024,
+                          NULL,
+                          1,
+                          &tarea_2,
+                          app_cpu);
+
+  xTaskCreatePinnedToCore(tarea03,
+                          "Tarea 3",
+                          1024,
+                          NULL,
+                          1,
+                          &tarea_3,
+                          app_cpu);
+
+  xTaskCreatePinnedToCore(tarea04,
+                          "Tarea 4",
+                          1024,
+                          NULL,
+                          1,
+                          &tarea_4,
+                          app_cpu);
+
+  xTaskCreatePinnedToCore(tarea05,
+                          "Tarea 5",
+                          1024,
+                          NULL,
+                          1,
+                          &tarea_5,
+                          app_cpu);
+
+  xTaskCreatePinnedToCore(tarea06,
+                          "Tarea 6",
+                          1024,
+                          NULL,
+                          1,
+                          &tarea_6,
+                          app_cpu);
+
+  xTaskCreatePinnedToCore(tarea07,
+                          "Tarea 7",
+                          1024,
+                          NULL,
+                          1,
+                          &tarea_7,
+                          app_cpu);
+
+  xTaskCreatePinnedToCore(tarea08,
+                          "Tarea 8",
+                          1024,
+                          NULL,
+                          1,
+                          &tarea_8,
+                          app_cpu);
+}
+
+void loop() {
+}
