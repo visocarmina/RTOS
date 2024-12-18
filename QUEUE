@@ -1,0 +1,94 @@
+/*
+Sistemas operativos en tiempo real
+
+U2E3_Práctica 4 QUEUE
+
+Raymundo Reducindo Castillo
+Noel Francisco Rodriguez
+Fátima Carmina Villa Soto
+*/
+#include "FreeRTOS.h"
+#include "task.h"
+#include "queue.h"
+#include <stdio.h>
+#include "pico/stdlib.h"
+
+static const uint8_t queue1_len = 1;
+static const uint8_t queue2_len = 1;
+
+static QueueHandle_t queue1;
+static QueueHandle_t queue2;
+
+// Declaramos la Tarea A, encargada de enviar el mensaje por original y enviarlo
+// después recibe el mensaje de la segunda queue y la aumenta en 10.
+void TareaA(void *parameters){
+  int item; // Creamos una variable local para el mensaje que recibe.
+  int item_send = 10; // Creamos una variable local y le asignamos un valor inicial la mensaje original.
+  bool flag = 1;  // Creamos una variable local como bandera para el envío del mensaje original.
+  while(1){
+    if(flag == 1){
+      // Entra a este if una única vez para enviar el mensaje original.
+      if(xQueueSend(queue1,(void*)&item_send,10) != pdTRUE){
+        Serial.println("Queue1 full");
+      }   
+      flag = 0; // Mandamos la bandera a cero para nunca volver a entrar.
+    }
+    // Entra a este if si recibe un mensaje de la segunda queue y lo imprime en el serial.
+    if(xQueueReceive(queue2,(void*)&item,0)==pdTRUE){
+      Serial.print(item);
+      Serial.println("A");
+    }
+    // Después de imprimirla la aumentamos en 10.
+    item_send = item + 10;
+    // Enviamos el mensaje aumentado por parte de la primera queue.
+    if(xQueueSend(queue1,(void*)&item_send,10) != pdTRUE){
+      Serial.println("Queue1 full");
+    }
+    // Vaciamos las variables que reciben y envian el mensaje.
+    item_send = 0;
+    item = 0;
+    // Tiempo muerto para volver a ejecutar la Tarea A.
+    vTaskDelay(500/portTICK_PERIOD_MS);
+    
+  }
+}
+
+void TareaB(void *parameters){
+  int item; // Creamos una variable local para el mensaje que recibe.
+  int item_send = 10; // Creamos una variable local y le asignamos un valor inicial la mensaje original. 
+  while(1){
+    // Entra a este if si recibe un mensaje de la primera queue y lo imprime en el serial.
+    if(xQueueReceive(queue1,(void*)&item,0)==pdTRUE){
+      Serial.print(item);
+      Serial.println("B");
+    }
+    // Después de imprimirla la aumentamos en 10.
+    item_send = item + 10;
+    // Enviamos el mensaje aumentado por parte de la primera queue.
+    if(xQueueSend(queue2,(void*)&item_send,10) != pdTRUE){
+      Serial.println("Queue2 full");
+    }
+    // Vaciamos las variables que reciben y envian el mensaje.
+    item_send = 0;
+    item = 0;
+    // Tiempo muerto para volver a ejecutar la Tarea B.
+    vTaskDelay(500/portTICK_PERIOD_MS);
+  }
+}
+
+void setup() {
+  Serial.begin(115200); // Inicializamos la comunicación serial a 115200 baudios.
+  Serial.println("Comunicación serial iniciada");
+  delay(500);
+
+  // Creamos las dos queues.
+  queue1 = xQueueCreate(queue1_len,sizeof(int));
+  queue2 = xQueueCreate(queue2_len,sizeof(int));
+
+  // Creamos las dos tareas que enviarán y recibirán los mensajes del queues.
+  xTaskCreate(TareaA,"Tarea A",1024,NULL,1,NULL);
+  xTaskCreate(TareaB,"Tarea B",1024,NULL,1,NULL);
+}
+
+void loop() {
+}
