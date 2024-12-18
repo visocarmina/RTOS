@@ -1,0 +1,132 @@
+/*
+Sistemas operativos en tiempo real
+
+U2E2_Práctica 3
+
+Raymundo Reducindo Castillo
+Noel Francisco Rodriguez
+Fátima Carmina Villa Soto
+*/
+
+#include <Wire.h>      // libreria de comunicacion por I2C
+#include <LCD.h>      // libreria para funciones de LCD
+#include <LiquidCrystal_I2C.h>    // libreria para LCD por I2C
+#include <MPU6050.h>
+
+#define pin_SDA 15             
+#define pin_SCL 14 
+
+LiquidCrystal_I2C lcd (0x27, 2, 1, 0, 4, 5, 6, 7); // DIR, E, RW, RS, D4, D5, D6, D7
+
+MPU6050 mpu;
+
+int pitch=0;
+int roll=0;
+
+static SemaphoreHandle_t mutex; // Creamos el semaforo
+
+void tareaMPU6050(void *parameters){
+  while(1){
+    // Leer los datos del sensor
+    int16_t ax, ay, az, gx, gy, gz;
+    mpu.getMotion6(&ax, &ay, &az, &gx, &gy, &gz);
+ 
+    // Convertir los datos en unidades de medida
+    float accelX = ax / 16384.0; // Sensibilidad del acelerómetro para el rango de ±2g
+    float accelY = ay / 16384.0;
+    float accelZ = az / 16384.0;
+ 
+    float gyroX = gx / 131.0; // Sensibilidad del giroscopio para el rango de ±250°/s
+    float gyroY = gy / 131.0;
+    float gyroZ = gz / 131.0;
+
+    /*----- Angulos pich and roll a partir de un acelerometro*/
+    pitch = -(atan2(accelX, sqrt(accelY*accelY + accelZ*accelZ))*180.0)/M_PI;
+    roll = ((atan2(accelY, accelZ)*180.0)/M_PI);
+    /* Pasamos los grados a valores de 0 a 1023 con la finalidad de no tener negativos*/
+    roll=map(roll,-180,180,0,1023);
+    pitch=map(pitch,-180,180,0,1023);
+
+    if(xSemaphoreTake(mutex,0)==pdTRUE){
+    //Sección crítica
+    if(roll<1000){
+      lcd.setCursor(0, 0);    // ubica cursor en columna 0 y linea 0
+      lcd.print("roll ");  // escribe el texto
+      lcd.setCursor(5, 0);    // ubica cursor en columna 0 y linea 0
+      lcd.print(roll);  // escribe el texto
+    }
+    else{
+      lcd.setCursor(0, 0);    // ubica cursor en columna 0 y linea 0
+      lcd.print("roll");  // escribe el texto
+      lcd.setCursor(4, 0);    // ubica cursor en columna 0 y linea 0
+      lcd.print(roll);  // escribe el texto
+    }
+    if(pitch<1000){
+      lcd.setCursor(0, 1);    // ubica cursor en columna 0 y linea 0
+      lcd.print("pitch ");  // escribe el texto
+      lcd.setCursor(6, 1);    // ubica cursor en columna 0 y linea 0
+      lcd.print(pitch);  // escribe el texto
+    }
+    else{
+      lcd.setCursor(0, 1);    // ubica cursor en columna 0 y linea 0
+      lcd.print("pitch");  // escribe el texto
+      lcd.setCursor(5, 1);    // ubica cursor en columna 0 y linea 0
+      lcd.print(pitch);  // escribe el texto
+    }
+    //Liberamos la sección crítica
+    xSemaphoreGive(mutex);
+    }
+    else{
+
+    }
+    vTaskDelay(250/portTICK_PERIOD_MS);  //Este retardo permite que otra tarea entre a la sección crítica
+  }
+}
+
+void tareaPote(void *parameters){
+  while(1){
+    if(xSemaphoreTake(mutex,0)==pdTRUE){
+    //Sección crítica
+    float pote = (analogRead(2)*3.3)/4095;
+    Serial.println("Leí pote");
+    lcd.setCursor(9, 0);    // ubica cursor en columna 0 y linea 0
+    lcd.print("ADC");  // escribe el texto
+    lcd.setCursor(12, 0);    // ubica cursor en columna 0 y linea 0
+    lcd.print(pote);  // escribe el texto
+    Serial.println("Imprimí pote");
+    //Liberamos la sección crítica
+    xSemaphoreGive(mutex);
+    }
+    else{
+
+    }
+    vTaskDelay(250/portTICK_PERIOD_MS);  //Este retardo permite que otra tarea entre a la sección crítica
+  }
+}
+
+void setup() {
+  Wire.begin(pin_SDA, pin_SCL);
+  Serial.begin(115200);
+  Serial.println("Comunicaciones inicializadas");
+  lcd.setBacklightPin(3,POSITIVE);  // puerto P3 de PCF8574 como positivo
+  lcd.setBacklight(HIGH);   // habilita iluminacion posterior de LCD
+  lcd.begin(16, 2);     // 16 columnas por 2 lineas para LCD 1602A
+  lcd.clear();      // limpia pantalla
+
+  // Inicializar el sensor MPU6050
+  mpu.initialize();
+
+  // Configurar el rango de escala del giroscopio y acelerómetro
+  mpu.setFullScaleGyroRange(MPU6050_GYRO_FS_250);
+  mpu.setFullScaleAccelRange(MPU6050_ACCEL_FS_2);
+
+  //Crear Mutex antes de comenzar las tareas
+  mutex =xSemaphoreCreateMutex();
+
+  // Creamos las tareas para el sensor digital y para el sensor analógico
+  xTaskCreate(tareaMPU6050,"MPU6050",4096,NULL,1,NULL);
+  xTaskCreate(tareaPote,"Pote",4096,NULL,1,NULL);
+}
+
+void loop() {
+}
