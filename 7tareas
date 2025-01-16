@@ -1,0 +1,475 @@
+/*
+Sistemas operativos en tiempo real
+
+Tarea 1 & 2 & 3 & 4 & 5 & 6 pico
+
+Raymundo Reducindo Castillo
+Noel Francisco Rodriguez
+Fátima Carmina Villa Soto
+*/
+
+//Librerías para utilizar el RTOS
+#include "FreeRTOS.h"
+#include "task.h"
+#include <stdio.h>
+#include "pico/stdlib.h"
+#include "timers.h"
+#include "semphr.h"
+//Librerías para utilizar la SSD1306
+#include <Wire.h>
+#include <Adafruit_GFX.h>
+#include <Adafruit_SSD1306.h>
+
+// Librerías para el MPU6050
+#include "I2Cdev.h"
+#include "MPU6050.h"
+
+#define SCREEN_WIDTH 128 // Largo del display, en pixeles
+#define SCREEN_HEIGHT 64 // Alto del display, en pixeles
+
+//Creación del objeto display
+Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, -1);
+
+static const TickType_t dim_delay = 250 / portTICK_PERIOD_MS; // Periodo del timer
+static TimerHandle_t myTimer = NULL; // Manejador de nuestro timer
+static TimerHandle_t myTimer06 = NULL; // Manejador de nuestro timer
+
+float voltaje = 0.0;  // Variable que guardara el voltaje en leído en el ADC
+
+// Definición de los pines de entrada de las tareas
+#define pinI1 0
+#define pinI3 1
+#define pinI6 6 
+
+// Definición de los pines de salida de las tareas
+#define pinO1 22
+#define pinO3 21
+#define pinO5 19 
+
+// Declaración de las banderas necesarias para las tareas
+bool flag01 = 0;
+bool flag03 = 0;
+bool flag04 = 0;
+bool flag05 = 0;
+
+// Declaración de variables globales auxiliares para las tareas
+bool toogle = 0;
+bool toogle01 = 0;
+
+int cont = 0;
+int cont05 = 0;
+
+String msg;
+String estado01;
+String estado03;
+String menu[] = {"Hola, escribe la tarea que gusta revisar","Tarea01 --> ET01","Tarea02 --> ET02","Tarea03 --> ET03","Tarea05 --> ET05","Tarea06 --> ET06"};
+String ET01_estado;
+float ET02_estado;
+String ET03_estado;
+String ET05_estado;
+String ET06_estado;
+
+MPU6050 mpu; // Creación objeto MPU
+
+// Declaración de variables para el MPU6050
+int16_t ax, ay, az, gx, gy, gz;
+
+int pitch=0;
+int roll=0;
+
+int cont1 = 0;
+int cont2 = 0;
+int cont3 = 0;
+int cont4 = 0;
+int cont5 = 0;
+int cont6 = 0;
+
+int lado = 0;
+
+int flag06 = 1;
+int flag06_aux = 0;
+
+static SemaphoreHandle_t mutex; // Creamos manejador del semaforo
+
+
+//Tarea 04
+char comando_uart[10] = {0};
+volatile bool comando_recibido = false;
+bool flag4=0;
+bool flag4_T5=0;
+bool flag4_T7=0;
+int periodo_T5 = 10;
+
+// Declaración del ISR del timer
+void ISR_myTimer(TimerHandle_t xTimer) {
+  voltaje = (analogRead(A0)*3.3)/1023.0;  // Leemos el ADC y lo pasamos a voltaje
+  
+
+}
+
+// Declaración del ISR del myTimer06
+void ISR_myTimer06(TimerHandle_t xTimer) {
+  if(flag06 == -1){
+    ET06_estado = "Leyendo...";
+    if(lado == 1){
+      cont1++;
+    }
+    else if(lado == 2){
+      cont2++;
+    }
+    else if(lado == 3){
+      cont3++;
+    }
+    else if(lado == 4){
+      cont4++;
+    }
+    else if(lado == 5){
+      cont5++;
+    }
+    else if(lado == 6){
+      cont6++;
+    }
+    else{
+    }
+    flag06_aux = 1;
+  }
+  else{
+    if(flag06_aux == 1){
+      ET06_estado = "Imprimiendo";  
+      Serial.print("Top: ");
+      Serial.print(cont1/5);
+      Serial.print(" Bottom: ");
+      Serial.print(cont2/5);
+      Serial.print(" Frontal: ");
+      Serial.print(cont3/5);
+      Serial.print(" Rear: ");
+      Serial.print(cont4/5);
+      Serial.print(" Left: ");
+      Serial.print(cont5/5);
+      Serial.print(" Right: ");
+      Serial.println(cont6/5);
+      cont1 = 0;
+      cont2 = 0;
+      cont3 = 0;
+      cont4 = 0;
+      cont5 = 0;
+      cont6 = 0;
+      flag06_aux = 0;
+    }
+    else{
+    }
+  }
+}
+
+// Declaración de la ISR de las interrupciones por hardware
+void ISR_Interrupt(){
+  flag06 = flag06*-1;
+}
+
+// Declaración de Tareas
+void Tarea01(void *parameters){
+  while(1){
+    // Si el botón está presionado
+    if(digitalRead(pinI1) == 1){
+      flag01 = 1; // Activamos bandera 01
+      ET01_estado = "Botón presionado";
+    }
+    // Si el botón no está presionado
+    if(digitalRead(pinI1) == 0){
+      flag01 = 0; // Desactivamos bandera 01
+      ET01_estado = "Botón no presionado";
+    }
+    // Cuando la bandera 01 se activa 
+    if(flag01 == 1){
+      cont++; // Incrementamos en 1 el contador
+      // Mientras el contador sea menor a 3
+      if(cont < 3){ 
+        digitalWrite(pinO1,HIGH); // Led se mantiene encendido
+      }
+      // Cuando el contador sea mayor o igual a 3 
+      if(cont >= 3){
+        toogle = !toogle;
+        digitalWrite(pinO1,toogle); // El Led cambia de estado
+        cont = 3; // Saturamos el contador en 3
+      }
+      vTaskDelay(1000/portTICK_PERIOD_MS); // Tiempo de espera de 1 seg para que vuelva a ingresar a la Tarea 01
+    }
+    // Si no
+    else{
+      cont = 0; // Reseteamos el contador
+      digitalWrite(pinO1,LOW); // Apagamos Led
+      toogle = 0; // Reseateamos la variable de toogle
+    }
+  }
+}
+
+void Tarea02(void *parameters){
+  while(1){
+    if(xSemaphoreTake(mutex,0)==pdTRUE){
+      // Sección crítica
+      display.clearDisplay(); // Limpiamos pantalla
+      display.setTextSize(2); // Configuramos tamaño de letra
+      display.setTextColor(WHITE);  // Seleccionamos color de letra
+      display.setCursor(0, 0);  // Posicionamos cursor
+      display.println("ADC:");  // Escribimos texto en la pantalla
+      display.setCursor(0, 16); // Reposicionamo el cursor
+      display.println(voltaje); // Mostramos el voltaje del ADC en plantalla
+      ET02_estado = voltaje;
+      display.display();        // Actualizamos la pantalla
+      // Liberamos la sección crítica
+      xSemaphoreGive(mutex);
+    }
+    else{
+
+    }  
+    vTaskDelay(250/portTICK_PERIOD_MS); // Tiempo muerto para volver a entrar a la Tarea 02
+  }
+}
+
+void Tarea03(void *parameters){
+  while(1){
+    // Si el botón está presionado
+    if(digitalRead(pinI3) == 1){
+      flag03 = 1; // Activamos bandera 01
+      ET03_estado = "Botón presionado";
+    }
+    // Si el botón no está presionado
+    if(digitalRead(pinI3) == 0){
+      flag03 = 0; // Desactivamos bandera 01
+      ET03_estado = "Botón no presionado";
+    }
+    // Cuando la bandera 01 se activa 
+    if(flag03 == 1){
+      toogle01 = !toogle01;
+      digitalWrite(pinO3,toogle01);
+      vTaskDelay(1000/portTICK_PERIOD_MS); // Tiempo de espera de 1 seg para que vuelva a ingresar a la Tarea 01
+    }
+    // Si no
+    else{
+      digitalWrite(pinO3,LOW); // Apagamos Led
+      toogle01 = 0; // Reseateamos la variable de toogle
+    }
+  }
+}
+
+void Tarea04(void *parameters){
+  vTaskDelay(2500/portTICK_PERIOD_MS);
+  for(int i = 0; i<6; i++){
+    Serial.println(menu[i]);
+  }
+  while(1){
+    if(Serial.available()> 0){
+      msg = Serial.readStringUntil('\n');
+      flag04 = 1;
+    }
+    if(flag04 == 1){
+      if(msg == "ET01"){
+        Serial.println(ET01_estado);  
+      }
+      else if(msg == "ET02"){
+        Serial.println(ET02_estado);  
+      }
+      else if(msg == "ET03"){
+        Serial.println(ET03_estado);  
+      }
+      else if(msg == "ET05"){
+        
+
+        Serial.println("Ingresa Retardo");
+            do{
+              //Cambiar retardo tarea 5
+              if (Serial.available()) {
+                flag4_T5=1;
+                int index = 0;
+                while (Serial.available() && index < sizeof(comando_uart) - 1) {
+                  comando_uart[index++] = Serial.read();
+                  vTaskDelay(10 / portTICK_PERIOD_MS);
+                }
+                comando_uart[index] = '\0'; // Terminar el comando
+                comando_recibido = true;
+                periodo_T5 = atoi(comando_uart);
+              }
+            }while(flag4_T5 == 0);  
+            flag4_T5 = 0;
+      }
+      else if(msg == "ET06"){
+        Serial.println(ET06_estado);  
+      }
+      else if(msg=="ET07"){
+        Serial.println("Ingrese el angulo en grados: ");
+            float x1, x;
+              flag4_T7 = 0;
+              do{
+                
+                if (Serial.available()) {
+                  int index = 0;
+                  while (Serial.available() && index < sizeof(comando_uart) - 1) {
+                    comando_uart[index++] = Serial.read();
+                    vTaskDelay(10 / portTICK_PERIOD_MS);
+                  }
+                  comando_uart[index] = '\0'; // Terminar el comando
+                  comando_recibido = true;
+                  flag4_T7=1;
+                }
+              }while(flag4_T7 == 0);
+              flag4_T7 = 0;
+              x1 = atoi(comando_uart);
+              x=x1*3.14159265/180;
+              float sen;
+              sen=x - pow(x,3)/6 + pow(x,5)/120 - pow(x,7)/5040 + pow(x,9)/362880 - pow(x,11)/39916800 + pow(x,13)/6227020800 - (x,15)/1307674368000;
+              Serial.print("Sen(");
+              Serial.print(x1);
+              Serial.print(") = ");
+              Serial.println(sen);
+              
+      }
+      else{
+        
+      }
+    }
+    vTaskDelay(500/portTICK_PERIOD_MS);
+  }
+}
+
+void Tarea05(void *parameter) {
+  while(1) {
+    // Si la bandera 05 está activada decrementa el contador 05 en 1
+    if(flag05 == 1){
+      cont05--;
+      ET05_estado = "Decrementando";
+    }
+    // Si la bandera 05 está desactivada incrementa el contador 05 en 1
+    if(flag05 == 0){
+      cont05++;
+      ET05_estado = "Incrementando";
+    }
+    // Si el contador 05 llega al valor de 155 activamos la bandera 05
+    if(cont05 == 155){ // El valor de 155 puede cambiarse a 255, solo es necesario calcular la resistencia conectada
+      flag05 = 1;      // en serie necesaria para no quemar nuestro LED
+    }
+    // Si el contador 05 llega al valor de 0 desactivamos la bandera 05
+    if(cont05 == 0){
+      flag05 = 0;
+    }
+    analogWrite(pinO5, cont05); // Mandamos por el pin de salida el PWM
+    vTaskDelay(periodo_T5 / portTICK_PERIOD_MS); // Retardo para volver a entrar a la Tarea 05
+  }
+}
+
+void Tarea06(void *parameters){
+  while(1){
+    if(xSemaphoreTake(mutex,0)==pdTRUE){
+      // Sección crítica
+      mpu.getMotion6(&ax, &ay, &az, &gx, &gy, &gz);
+      // Liberamos la sección crítica
+      xSemaphoreGive(mutex);
+    }
+    else{
+
+    }
+    vTaskDelay(20/portTICK_PERIOD_MS);
+    // Convertir los datos en unidades de medida
+    float accelX = ax / 16384.0; // Sensibilidad del acelerómetro para el rango de ±2g
+    float accelY = ay / 16384.0;
+    float accelZ = az / 16384.0;
+  
+    float gyroX = gx / 131.0; // Sensibilidad del giroscopio para el rango de ±250°/s
+    float gyroY = gy / 131.0;
+    float gyroZ = gz / 131.0;
+
+    /----- Angulos pich and roll a partir de un acelerometro/
+    pitch = -(atan2(accelX, sqrt(accelY*accelY + accelZ*accelZ))*180.0)/M_PI;
+    roll = ((atan2(accelY, accelZ)*180.0)/M_PI);
+    /* Pasamos los grados a valores de 0 a 1023 con la finalidad de no tener negativos*/
+    roll=map(roll,-180,180,0,1023);
+    pitch=map(pitch,-180,180,0,1023);
+
+    // Identificación de planos
+    if(((200<pitch)&&(pitch<400))&&((0<roll)&&(roll<1023))){
+      lado = 1; // Superior
+    }
+    else if(((600<pitch)&&(pitch<800))&&((0<roll)&&(roll<1023))){
+      lado = 2; // Inferior
+    }
+    else if(((400<pitch)&&(pitch<600))&&((500<roll)&&(roll<540))){
+      lado = 3; // Frontal
+    }
+    else if(((400<pitch)&&(pitch<600))&&(((0<roll)&&(roll<100))||((900<roll)&&(roll<1023)))){
+      lado = 4; // Posterior
+    }
+    else if(((400<pitch)&&(pitch<600))&&((700<roll)&&(roll<900))){
+      lado = 5; // Izquierdo
+    }
+    else if(((400<pitch)&&(pitch<600))&&((200<roll)&&(roll<400))){
+      lado = 6;  // Derecho
+    }
+    else{
+    }
+    vTaskDelay(250/portTICK_PERIOD_MS); // Retardo para volver a entrar a la Tarea06
+  }
+}
+void setup() {
+  // Configuración de las entradas y las salidas
+  pinMode(pinO1,OUTPUT);
+  pinMode(pinI1,INPUT);
+  pinMode(pinO3,OUTPUT);
+  pinMode(pinI3,INPUT);
+  attachInterrupt(digitalPinToInterrupt(pinI6),ISR_Interrupt, RISING); // Habilitamos las interrupciones por hardware en un pin
+  
+  Serial.begin(115200); // Inicializamos comunicación serial
+  delay(1000);
+  Serial.println("comunicación serial inicializada");
+  if(!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) { // Address 0x3D for 128x64
+    Serial.println(F("SSD1306 allocation failed"));
+    for(;;);
+  }
+  display.clearDisplay();
+
+  Wire.begin(); // Inicializamos comunicación I2C
+  mpu.initialize();   // Inicializamos el MPU6050
+  // Configurar el rango de escala del giroscopio y acelerómetro
+  mpu.setFullScaleGyroRange(MPU6050_GYRO_FS_250);
+  mpu.setFullScaleAccelRange(MPU6050_ACCEL_FS_2);
+
+  // Crear Mutex antes de comenzar las tareas
+  mutex =xSemaphoreCreateMutex();
+
+  // Creación del Timer
+  myTimer = xTimerCreate(
+                        "myTimer",     // Name of timer
+                        dim_delay,     // Period of timer (in ticks)
+                        pdTRUE,        // Auto-reload
+                        (void *)0,     // Timer ID
+                        ISR_myTimer);  // Callback function
+  // Creación del Timer
+  myTimer06 = xTimerCreate(
+                        "myTimer06",     // Name of timer
+                        dim_delay,     // Period of timer (in ticks)
+                        pdTRUE,        // Auto-reload
+                        (void *)0,     // Timer ID
+                        ISR_myTimer06);  // Callback function
+
+  // Creación de Tareas
+  xTaskCreate(Tarea01,"Tarea 01",1024,NULL,1,NULL);
+  xTaskCreate(Tarea02,"Tarea 02",1024,NULL,1,NULL);
+  xTaskCreate(Tarea03,"Tarea 03",1024,NULL,1,NULL);
+  xTaskCreate(Tarea04,"Tarea 04",1024,NULL,1,NULL);
+  xTaskCreate(Tarea05,"Tarea 05",1024,NULL,1,NULL);
+  xTaskCreate(Tarea06,"Tarea 06",1024,NULL,1,NULL);
+
+  // Inicializamos el Timer 
+  if(myTimer != NULL){
+    xTimerStart(myTimer,0);
+  }else{
+    Serial.println("---- Error al inicializar el Timer ----");
+  } 
+  // Inicializamos el timer myTimer06 
+  if(myTimer06 != NULL){
+    xTimerStart(myTimer06,0);
+  }else{
+    Serial.println("---- Error al inicializar el Timer ----");
+  }
+}
+
+void loop() {
+}
